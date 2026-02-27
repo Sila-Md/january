@@ -22,5 +22,12 @@
     "pm2": "^5.4.0",
     "async-mutex": "0.4.1",
     "jimp": "^0.16.13"
+  },
+  "overrides": {
+    "libsignal-node": "2.0.1"
+  },
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
   }
 }
