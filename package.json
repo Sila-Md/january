@@ -9,7 +9,7 @@
     "restart": "pm2 restart SESSIONSCANNERt"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "github:xhclintohn/Baileys",
+    "@whiskeysockets/baileys": "npm:gifted-baileys@2.0.6",
     "@adiwajshing/keyed-db": "^0.2.4",
     "qrcode": "^1.5.3",
     "awesome-phonenumber": "^2.64.0",
