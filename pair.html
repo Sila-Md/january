@@ -23,11 +23,10 @@ html,body{
   font-family:Rajdhani,sans-serif;
   color:var(--text);
   background:url("https://files.catbox.moe/36vahk.png") center/cover no-repeat fixed;
-  overflow:hidden;
+  overflow-x:hidden;
   position:relative;
 }
 
-/* Dark overlay */
 body::before{
   content:"";
   position:fixed;
@@ -37,14 +36,13 @@ body::before{
   transition:background 0.3s ease;
 }
 
-/* CARD */
 .frame{
   position:relative;
   z-index:2;
-  max-width:400px;
+  max-width:440px;
   margin:auto;
-  top:16%;
-  padding:34px;
+  top:8%;
+  padding:30px 28px;
   border-radius:24px;
   background:var(--panel);
   backdrop-filter:blur(18px);
@@ -59,12 +57,11 @@ body::before{
   100%{border-image:linear-gradient(360deg,var(--green),var(--yellow)) 1}
 }
 
-/* HEADER */
 .top{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  margin-bottom:16px;
+  margin-bottom:14px;
 }
 
 .title{
@@ -74,7 +71,6 @@ body::before{
   color:var(--yellow);
 }
 
-/* LANGUAGE SWITCH */
 .lang{
   display:flex;
   gap:6px;
@@ -95,59 +91,141 @@ body::before{
   color:#02140c;
 }
 
-/* SUBTITLE */
 #subtitle{
   font-size:.7rem;
   letter-spacing:.35em;
   opacity:.85;
-  margin-bottom:22px;
+  margin-bottom:18px;
+}
+
+/* SESSION TYPE SELECTOR */
+.session-type{
+  display:flex;
+  gap:10px;
+  margin-bottom:18px;
+}
+
+.session-option{
+  flex:1;
+}
+
+.session-option input[type="radio"]{
+  display:none;
+}
+
+.session-option label{
+  display:block;
+  padding:12px 8px;
+  text-align:center;
+  border:2px solid rgba(255,255,255,.15);
+  border-radius:12px;
+  cursor:pointer;
+  transition:all 0.3s;
+  background:rgba(2,8,20,.7);
+  font-size:.75rem;
+}
+
+.session-option input[type="radio"]:checked + label{
+  border-color:var(--green);
+  background:linear-gradient(135deg,rgba(0,255,136,.2),rgba(255,230,0,.2));
+  box-shadow:0 0 15px rgba(0,255,136,.3);
+}
+
+.session-option .option-title{
+  display:block;
+  font-weight:700;
+  font-size:.85rem;
+  color:var(--yellow);
+  margin-bottom:3px;
+}
+
+.session-option .option-desc{
+  display:block;
+  font-size:.65rem;
+  opacity:.75;
 }
 
 /* INPUT */
 .input-container{
   display:flex;
-  gap:12px;
+  gap:10px;
+  margin-bottom:10px;
 }
 
-input{
+input[type="number"]{
   flex:1;
   padding:14px;
   border-radius:14px;
   background:#020814;
   border:1px solid rgba(0,255,136,.4);
   color:var(--text);
-  font-family:JetBrains Mono;
+  font-family:JetBrains Mono,monospace;
+  font-size:.9rem;
+}
+
+input[type="number"]:focus{
+  outline:none;
+  border-color:var(--yellow);
+  box-shadow:0 0 12px rgba(255,230,0,.3);
 }
 
 button.main{
-  padding:14px 18px;
+  padding:14px 20px;
   border:none;
   border-radius:14px;
   cursor:pointer;
   font-weight:700;
   background:linear-gradient(135deg,var(--yellow),var(--green));
   color:#02130c;
+  font-family:Rajdhani,sans-serif;
+  font-size:.9rem;
+  transition:transform 0.2s;
+}
+
+button.main:hover{
+  transform:scale(1.05);
+}
+
+button.main:disabled{
+  opacity:.6;
+  transform:none;
+  cursor:not-allowed;
 }
 
 /* MESSAGE */
 #waiting-message{
   display:none;
-  margin-top:18px;
+  margin-top:16px;
   padding:14px;
   background:#010614;
   border-radius:14px;
-  font-family:JetBrains Mono;
-  font-size:.9rem;
+  font-family:JetBrains Mono,monospace;
+  font-size:.8rem;
   text-align:left;
+  word-break:break-all;
+  max-height:200px;
+  overflow-y:auto;
+  border:1px solid rgba(0,255,136,.2);
 }
 
 #copy-btn{
   display:none;
-  margin-top:18px;
+  margin-top:14px;
   width:100%;
+  padding:12px;
   border-radius:30px;
   background:linear-gradient(135deg,#fff200,#00ff88);
   font-weight:700;
+  font-family:Rajdhani,sans-serif;
+  font-size:.9rem;
+  border:none;
+  cursor:pointer;
+  color:#02130c;
+  transition:transform 0.2s;
+}
+
+#copy-btn:hover{
+  transform:scale(1.03);
 }
 
 /* FLOATING WHATSAPP */
@@ -164,13 +242,14 @@ button.main{
   box-shadow:0 0 25px rgba(0,255,136,.8);
   animation:float 2s ease-in-out infinite;
   z-index:5;
+  font-family:Rajdhani,sans-serif;
 }
 
 @keyframes float{
   50%{transform:translateY(-8px)}
 }
 
-/* CONTROL BUTTONS */
+/* CONTROLS */
 .controls{
   position:fixed;
   bottom:22px;
@@ -189,9 +268,20 @@ button.main{
   background:linear-gradient(135deg,var(--yellow),var(--green));
   color:#02130c;
   box-shadow:0 0 18px rgba(0,255,136,.6);
+  font-family:Rajdhani,sans-serif;
+  font-size:.75rem;
 }
 
 audio{display:none}
+
+/* Scrollbar */
+#waiting-message::-webkit-scrollbar{
+  width:4px;
+}
+#waiting-message::-webkit-scrollbar-thumb{
+  background:var(--green);
+  border-radius:2px;
+}
 </style>
 </head>
 
@@ -208,8 +298,26 @@ audio{display:none}
 
   <div id="subtitle"></div>
 
+  <!-- Session Type Selection -->
+  <div class="session-type">
+    <div class="session-option">
+      <input type="radio" id="long-session" name="session-type" value="long" checked>
+      <label for="long-session">
+        <span class="option-title">🔑 Long Session</span>
+        <span class="option-desc">Compressed string</span>
+      </label>
+    </div>
+    <div class="session-option">
+      <input type="radio" id="creds-session" name="session-type" value="creds">
+      <label for="creds-session">
+        <span class="option-title">📁 Creds.json</span>
+        <span class="option-desc">Full JSON file</span>
+      </label>
+    </div>
+  </div>
+
   <div class="input-container">
-    <input id="number" type="number">
+    <input id="number" type="number" placeholder="">
     <button class="main" id="submit"></button>
   </div>
 
@@ -235,27 +343,45 @@ document.addEventListener("click",()=>{if(bgm.paused) bgm.play()},{once:true});
 document.getElementById("toggle-music").onclick=()=>bgm.paused?bgm.play():bgm.pause();
 
 /* DARK OVERLAY */
-const overlay=document.body;
 let overlayOn=true;
 document.getElementById("toggle-overlay").onclick=()=>{
   overlayOn=!overlayOn;
-  overlay.style.setProperty("--overlay-opacity", overlayOn?'.65':'0');
-  document.querySelector('body::before');
-  document.body.style.setProperty('--overlay-opacity', overlayOn?'.65':'0');
-  document.body.style.backgroundColor='rgba(0,0,0,'+(overlayOn?.65:0)+')';
-  // simple hack: adjust pseudo element
-  const styleEl = document.styleSheets[0];
-  for(let i=0;i<styleEl.cssRules.length;i++){
-    if(styleEl.cssRules[i].selectorText=='body::before'){
-      styleEl.cssRules[i].style.background=`rgba(0,0,0,${overlayOn?.65:0})`;
-    }
+  const opacity=overlayOn?'0.65':'0';
+  document.body.style.setProperty('--overlay-opacity',opacity);
+  // Update pseudo-element via style injection
+  let styleEl=document.getElementById('overlay-style');
+  if(!styleEl){
+    styleEl=document.createElement('style');
+    styleEl.id='overlay-style';
+    document.head.appendChild(styleEl);
   }
+  styleEl.textContent=`body::before{background:rgba(0,0,0,${opacity})!important}`;
 };
 
 /* LANGUAGE DATA */
 const T={
-  en:{sub:"PAIR CODE SYSTEM",ph:"WhatsApp Number",enter:"ENTER",invalid:"Invalid WhatsApp number",gen:"Generating code...",code:"PAIR CODE: ",copy:"📋 COPY CODE",copied:"✔ COPIED"},
-  sw:{sub:"MFUMO WA PAIR CODE",ph:"Namba ya WhatsApp",enter:"INGIA",invalid:"Namba si sahihi",gen:"Inazalisha code...",code:"CODE: ",copy:"📋 NAKILI CODE",copied:"✔ IMENAKILIWA"}
+  en:{
+    sub:"PAIR CODE SYSTEM",
+    ph:"WhatsApp Number",
+    enter:"ENTER",
+    invalid:"Invalid WhatsApp number",
+    gen:"Generating code...",
+    code:"PAIR CODE: ",
+    copy:"📋 COPY CODE",
+    copied:"✔ COPIED",
+    serviceError:"Service error"
+  },
+  sw:{
+    sub:"MFUMO WA PAIR CODE",
+    ph:"Namba ya WhatsApp",
+    enter:"INGIA",
+    invalid:"Namba si sahihi",
+    gen:"Inazalisha code...",
+    code:"CODE: ",
+    copy:"📋 NAKILI CODE",
+    copied:"✔ IMENAKILIWA",
+    serviceError:"Hitilafu ya huduma"
+  }
 };
 
 let lang="en";
@@ -274,24 +400,49 @@ function setLang(l){
   document.getElementById("sw").classList.toggle("active",l==="sw");
 }
 setLang("en");
-en.onclick=()=>setLang("en");
-sw.onclick=()=>setLang("sw");
+document.getElementById("en").onclick=()=>setLang("en");
+document.getElementById("sw").onclick=()=>setLang("sw");
+
+/* SESSION TYPE */
+function getSessionType(){
+  const longRadio=document.getElementById("long-session");
+  return longRadio.checked?"long":"creds";
+}
 
 /* PAIR CODE LOGIC */
 submit.onclick=async()=>{
   const v=number.value.replace(/\D/g,"");
   if(!v||v.length<11){
-    msg.style.display="block"; msg.textContent=T[lang].invalid; copy.style.display="none"; return;
+    msg.style.display="block";
+    msg.textContent=T[lang].invalid;
+    copy.style.display="none";
+    return;
   }
-  msg.style.display="block"; msg.textContent=T[lang].gen;
+  
+  const sessionType=getSessionType();
+  msg.style.display="block";
+  msg.textContent=T[lang].gen + ` (${sessionType.toUpperCase()})`;
+  copy.style.display="none";
+  submit.disabled=true;
+  
   try{
-    const r=await fetch(`/code?number=${v}`);
+    const r=await fetch(`/code?number=${v}&session=${sessionType}`);
     const d=await r.json();
     const code=d.code||"Unavailable";
-    msg.textContent=T[lang].code+code;
-    copy.style.display="block"; copy.textContent=T[lang].copy;
-    copy.onclick=()=>{navigator.clipboard.writeText(code); copy.textContent=T[lang].copied; setTimeout(()=>copy.textContent=T[lang].copy,2000);}
-  }catch{msg.textContent="Service error";}
+    msg.textContent=T[lang].code + code;
+    copy.style.display="block";
+    copy.textContent=T[lang].copy;
+    copy.onclick=()=>{
+      navigator.clipboard.writeText(code).then(()=>{
+        copy.textContent=T[lang].copied;
+        setTimeout(()=>copy.textContent=T[lang].copy,2000);
+      });
+    };
+  }catch(e){
+    msg.textContent=T[lang].serviceError;
+  }finally{
+    submit.disabled=false;
+  }
 };
 </script>
 
