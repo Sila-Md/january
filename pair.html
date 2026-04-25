@@ -272,8 +272,6 @@ button.main:disabled{
   font-size:.75rem;
 }
 
-audio{display:none}
-
 /* Scrollbar */
 #waiting-message::-webkit-scrollbar{
   width:4px;
@@ -330,25 +328,16 @@ audio{display:none}
 
 <!-- Controls -->
 <div class="controls">
-  <button id="toggle-music">⏯ Play / Pause</button>
   <button id="toggle-overlay">🌙 Overlay</button>
 </div>
 
-<audio id="bgm" src="https://files.catbox.moe/iwpfp2.mp3" loop></audio>
-
 <script>
-/* MUSIC */
-const bgm=document.getElementById("bgm");
-document.addEventListener("click",()=>{if(bgm.paused) bgm.play()},{once:true});
-document.getElementById("toggle-music").onclick=()=>bgm.paused?bgm.play():bgm.pause();
-
 /* DARK OVERLAY */
 let overlayOn=true;
 document.getElementById("toggle-overlay").onclick=()=>{
   overlayOn=!overlayOn;
   const opacity=overlayOn?'0.65':'0';
   document.body.style.setProperty('--overlay-opacity',opacity);
-  // Update pseudo-element via style injection
   let styleEl=document.getElementById('overlay-style');
   if(!styleEl){
     styleEl=document.createElement('style');
