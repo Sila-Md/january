@@ -7,8 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
-  --accent: #00ff88; /* active color */
-  --expired: #ffe600; /* expired color */
+  --accent: #00ff88;
+  --expired: #ffe600;
   --accent2: #00ffcc;
   --bg-dark: #010101;
   --glass: rgba(15, 15, 25, 0.85);
@@ -22,11 +22,10 @@ html, body {
   font-family: 'Orbitron', sans-serif;
   background:url("https://files.catbox.moe/36vahk.png") center/cover no-repeat fixed;
   color: var(--text);
-  overflow: hidden;
+  overflow-x:hidden;
   position: relative;
 }
 
-/* Dark overlay */
 body::before{
   content:"";
   position:fixed;
@@ -40,10 +39,10 @@ body::before{
 #content {
   position: relative;
   z-index:2;
-  width:360px;
+  width:380px;
   margin:auto;
-  top:12%;
-  padding:28px;
+  top:8%;
+  padding:24px 20px;
   border-radius:20px;
   background: var(--glass);
   backdrop-filter: blur(16px) saturate(180%);
@@ -55,7 +54,7 @@ body::before{
 /* Header */
 #main {
   font-size:1.4rem;
-  margin: 1rem 0 0.3rem 0;
+  margin: 0.8rem 0 0.3rem 0;
   font-family: 'Share Tech Mono', monospace;
   text-transform: uppercase;
   color: var(--accent);
@@ -63,24 +62,72 @@ body::before{
 
 .legend{
   font-weight:400;
-  font-size:1rem;
-  margin-bottom:1rem;
+  font-size:0.9rem;
+  margin-bottom:0.8rem;
   color:#ddd;
+}
+
+/* Session Type Selector */
+.session-type{
+  display:flex;
+  gap:8px;
+  margin-bottom:1rem;
+}
+
+.session-option{
+  flex:1;
+}
+
+.session-option input[type="radio"]{
+  display:none;
+}
+
+.session-option label{
+  display:block;
+  padding:10px 6px;
+  text-align:center;
+  border:2px solid rgba(255,255,255,.15);
+  border-radius:10px;
+  cursor:pointer;
+  transition:all 0.3s;
+  background:rgba(2,8,20,.7);
+  font-size:0.7rem;
+  font-family:'Share Tech Mono', monospace;
+}
+
+.session-option input[type="radio"]:checked + label{
+  border-color:var(--accent);
+  background:linear-gradient(135deg,rgba(0,255,136,.2),rgba(0,255,204,.2));
+  box-shadow:0 0 15px rgba(0,255,136,.3);
+}
+
+.session-option .option-title{
+  display:block;
+  font-weight:700;
+  font-size:0.8rem;
+  color:var(--accent);
+  margin-bottom:2px;
+}
+
+.session-option .option-desc{
+  display:block;
+  font-size:0.6rem;
+  opacity:.75;
 }
 
 /* QR Image */
 #QR-content img{
   border-radius:14px;
-  width:250px;
+  width:230px;
   box-shadow:0 0 25px var(--accent);
-  margin-bottom:1rem;
+  margin-bottom:0.8rem;
 }
 
 /* Neon Progress Bar */
 progress{
   width:100%;
-  height:14px;
-  border-radius:7px;
+  height:12px;
+  border-radius:6px;
   overflow:hidden;
   background:#111;
   border:1px solid rgba(0,255,136,.4);
@@ -100,7 +147,7 @@ progress::-webkit-progress-value{
 /* Reload Button */
 .reload-button{
   display:inline-block;
-  margin-top:1.3rem;
+  margin-top:1.2rem;
   padding:12px 24px;
   background:linear-gradient(135deg,var(--accent2),var(--accent));
   color:#001;
@@ -108,7 +155,7 @@ progress::-webkit-progress-value{
   border-radius:50px;
   cursor:pointer;
   font-weight:bold;
-  font-size:0.95rem;
+  font-size:0.9rem;
   box-shadow:0 0 20px rgba(0,255,150,.6);
   transition:0.3s;
 }
@@ -131,6 +178,8 @@ progress::-webkit-progress-value{
   box-shadow:0 0 25px rgba(0,255,136,.8);
   animation:float 2s ease-in-out infinite;
   z-index:5;
+  font-family:'Orbitron', sans-serif;
+  font-size:0.85rem;
 }
 @keyframes float{50%{transform:translateY(-8px)}}
 
@@ -152,12 +201,32 @@ progress::-webkit-progress-value{
   background:linear-gradient(135deg,var(--accent2),var(--accent));
   color:#001;
   box-shadow:0 0 18px rgba(0,255,136,.6);
+  font-family:'Orbitron', sans-serif;
+  font-size:0.75rem;
 }
 </style>
 </head>
 <body>
 
 <div id="content">
+  <!-- Session Type Selection -->
+  <div class="session-type">
+    <div class="session-option">
+      <input type="radio" id="long-session" name="session-type" value="long" checked>
+      <label for="long-session">
+        <span class="option-title">🔑 Long Session</span>
+        <span class="option-desc">Compressed string</span>
+      </label>
+    </div>
+    <div class="session-option">
+      <input type="radio" id="creds-session" name="session-type" value="creds">
+      <label for="creds-session">
+        <span class="option-title">📁 Creds.json</span>
+        <span class="option-desc">Full JSON file</span>
+      </label>
+    </div>
+  </div>
+
   <div id="QR-content">
     <img id="qr-image" src="/server" alt="QR CODE">
   </div>
@@ -168,7 +237,7 @@ progress::-webkit-progress-value{
   <div id="description-container">
     <progress value="0" max="30" id="progressBar"></progress>
   </div>
-  <a href="javascript:history.go(0)" class="reload-button">⟳ Reload Page</a>
+  <a href="javascript:location.reload()" class="reload-button" id="reload-btn">⟳ Reload Page</a>
 </div>
 
 <!-- Floating WhatsApp -->
@@ -176,18 +245,10 @@ progress::-webkit-progress-value{
 
 <!-- Controls -->
 <div class="controls">
-  <button id="toggle-music">⏯ Play / Pause</button>
   <button id="toggle-overlay">🌙 Overlay</button>
 </div>
 
-<audio id="bgm" src="https://files.catbox.moe/iwpfp2.mp3" loop></audio>
-
 <script>
-// Music
-const bgm=document.getElementById("bgm");
-document.addEventListener("click",()=>{if(bgm.paused) bgm.play()},{once:true});
-document.getElementById("toggle-music").onclick=()=>bgm.paused?bgm.play():bgm.pause();
-
 // Dark overlay toggle
 let overlayOn=true;
 document.getElementById("toggle-overlay").onclick=()=>{
@@ -199,6 +260,47 @@ document.getElementById("toggle-overlay").onclick=()=>{
     }
   }
 };
+
+// Session type management
+function getSessionType(){
+  const longRadio=document.getElementById("long-session");
+  return longRadio.checked?"long":"creds";
+}
+
+// Update QR source when session type changes
+function updateQRSrc(){
+  const qrImg=document.getElementById("qr-image");
+  const sessionType=getSessionType();
+  qrImg.src=`/server?session=${sessionType}`;
+}
+
+// Listen for session type changes
+document.getElementById("long-session").addEventListener("change", ()=>{
+  updateQRSrc();
+  resetProgress();
+});
+
+document.getElementById("creds-session").addEventListener("change", ()=>{
+  updateQRSrc();
+  resetProgress();
+});
+
+// Update reload button
+document.getElementById("reload-btn").addEventListener("click", (e)=>{
+  e.preventDefault();
+  updateQRSrc();
+  resetProgress();
+  location.reload();
+});
+
+// Reset progress bar
+function resetProgress(){
+  timeleft = 30;
+  progressBar.value = 0;
+  mainTitle.innerHTML = "SILA QR";
+  mainTitle.style.color = "var(--accent)";
+  legend.innerHTML = "Scan The QR Code";
+}
 
 // Progress bar
 let timeleft = 30;
@@ -219,6 +321,9 @@ const downloadTimer = setInterval(()=>{
     timeleft-=1;
   }
 },1000);
+
+// Set initial QR source with session type
+updateQRSrc();
 </script>
 
 </body>
