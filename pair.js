@@ -1,9 +1,11 @@
 const { makeid } = require('./gen-id');
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
 let router = express.Router();
 const pino = require("pino");
 const zlib = require('zlib');
+const { sendButtons } = require('gifted-btns');
 const { 
     default: makeWASocket, 
     useMultiFileAuthState, 
@@ -14,6 +16,10 @@ const {
 
 // === CONFIGURATION ===
 const SESSION_PREFIX = "SILA-MD~";
+const BOT_REPO = "https://github.com/Sila-Md/SILA-MD";
+const WA_CHANNEL = "https://whatsapp.com/channel/0029VbBG4gfISTkCpKxyMH02";
+const THUMBNAIL_URL = "https://files.catbox.moe/98k75b.jpeg";
+const MSG_FOOTER = "© Sila Tech";
 
 function removeFile(FilePath) {
     if (!fs.existsSync(FilePath)) return false;
@@ -47,7 +53,8 @@ function generateCredsSession(credsPath) {
 router.get('/', async (req, res) => {
     const id = makeid();
     let num = req.query.number;
-    const sessionType = req.query.session || 'long'; // Default 'long', option: 'creds'
+    const sessionType = (req.query.session || 'long').toLowerCase();
+    let responseSent = false;
 
     async function SILA_MD_PAIR_CODE() {
         const { state, saveCreds } = await useMultiFileAuthState('./temp/' + id);
@@ -72,8 +79,9 @@ router.get('/', async (req, res) => {
                 await delay(1500);
                 num = num.replace(/[^0-9]/g, '');
                 const code = await sock.requestPairingCode(num);
-                if (!res.headersSent) {
+                if (!responseSent && !res.headersSent) {
                     await res.send({ code });
+                    responseSent = true;
                 }
             }
             
@@ -84,58 +92,98 @@ router.get('/', async (req, res) => {
 
                 if (connection == "open") {
                     await delay(3000);
-                    let credsPath = __dirname + `/temp/${id}/creds.json`;
+                    let credsPath = path.join(__dirname, 'temp', id, 'creds.json');
+
+                    // Wait for creds.json to be fully written
+                    let sessionData = null;
+                    let attempts = 0;
+                    const maxAttempts = 15;
+
+                    while (attempts < maxAttempts && !sessionData) {
+                        try {
+                            if (fs.existsSync(credsPath)) {
+                                const data = fs.readFileSync(credsPath);
+                                if (data && data.length > 100) {
+                                    sessionData = data;
+                                    break;
+                                }
+                            }
+                            await delay(8000);
+                            attempts++;
+                        } catch (readError) {
+                            console.error("Read error:", readError);
+                            await delay(2000);
+                            attempts++;
+                        }
+                    }
+
+                    if (!sessionData) {
+                        await removeFile('./temp/' + id);
+                        return;
+                    }
 
                     try {
                         let sessionCode;
+                        let sessionLabel;
                         
                         if (sessionType === 'long') {
                             // Long session: compressed + base64
-                            sessionCode = generateLongSession(credsPath);
-                            if (!sessionCode) throw new Error("Failed to generate long session");
+                            let compressedData = zlib.gzipSync(sessionData);
+                            let b64data = compressedData.toString('base64');
+                            sessionCode = SESSION_PREFIX + b64data;
+                            sessionLabel = 'LONG SESSION';
                         } else {
                             // Creds.json session: raw JSON
-                            sessionCode = generateCredsSession(credsPath);
-                            if (!sessionCode) throw new Error("Failed to read creds.json");
+                            sessionCode = sessionData.toString('utf8');
+                            sessionLabel = 'CREDS.JSON SESSION';
                         }
 
-                        // Send session code to user
-                        let sessionLabel = sessionType === 'long' ? 'LONG SESSION' : 'CREDS.JSON SESSION';
-                        
-                        // First message: session code only
-                        let codeMsg = await sock.sendMessage(sock.user.id, { 
-                            text: `*📱 YOUR ${sessionLabel}*\n\n${sessionCode}`
+                        // Prepare button options
+                        const msgButtons = [
+                            { name: 'cta_copy', buttonParamsJson: JSON.stringify({ display_text: '📋 Copy Session', copy_code: sessionCode }) },
+                            { name: 'cta_url', buttonParamsJson: JSON.stringify({ display_text: '📂 Bot Repository', url: BOT_REPO }) },
+                            { name: 'cta_url', buttonParamsJson: JSON.stringify({ display_text: '📢 Join Channel', url: WA_CHANNEL }) }
+                        ];
+
+                        // Send session with buttons
+                        await sendButtons(sock, sock.user.id, {
+                            title: 'SILA MD',
+                            text: `*✅ YOUR ${sessionLabel}*\n\n${sessionCode}`,
+                            footer: MSG_FOOTER,
+                            buttons: msgButtons
                         });
 
-                        // Second message: formatted with info
+                        // Send formatted info message
                         let desc = `┏━❑ *SILA-MD ${sessionLabel}* ✅
 ┏━❑ *SAFETY RULES* ━━━━━━━━━
-┃ 🔹 *Session ID:* Sent above.
+┃ 🔹 *Session:* Sent above with buttons.
 ┃ 🔹 *Warning:* Do not share this code!
 ┃ 🔹 Keep this code safe.
 ┃ 🔹 Valid for 24 hours only.
 ┗━━━━━━━━━━━━━━━
 ┏━❑ *CHANNEL* ━━━━━━━━━
-┃ 📢 Follow our channel: https://whatsapp.com/channel/0029VbBG4gfISTkCpKxyMH02
+┃ 📢 Follow our channel: ${WA_CHANNEL}
 ┗━━━━━━━━━━━━━━━
 ┏━❑ *REPOSITORY* ━━━━━━━━━
-┃ 💻 Repository: https://github.com/Sila-Md/SILA-MD
+┃ 💻 Repository: ${BOT_REPO}
 ┃ 👉 Fork & contribute!
 ┗━━━━━━━━━━━━━━━
 
 > © 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚 𝐓𝐞𝐜𝐡`;
 
+                        await delay(2000);
+
                         await sock.sendMessage(sock.user.id, {
                             text: desc,
                             contextInfo: {
                                 externalAdReply: {
                                     title: 'SILA MD',
                                     body: '© Sila Tech',
-                                    thumbnailUrl: 'https://files.catbox.moe/36vahk.png',
+                                    thumbnailUrl: THUMBNAIL_URL,
                                     thumbnailWidth: 64,
                                     thumbnailHeight: 64,
-                                    sourceUrl: 'https://whatsapp.com/channel/0029VbBG4gfISTkCpKxyMH02',
-                                    mediaUrl: 'https://files.catbox.moe/36vahk.png',
+                                    sourceUrl: WA_CHANNEL,
+                                    mediaUrl: THUMBNAIL_URL,
                                     showAdAttribution: true,
                                     renderLargerThumbnail: false,
                                     previewType: 'PHOTO',
@@ -149,55 +197,14 @@ router.get('/', async (req, res) => {
                                 isForwarded: true,
                                 forwardingScore: 999
                             }
-                        }, { quoted: codeMsg });
+                        });
 
                     } catch (e) {
-                        console.error("Session generation error:", e);
+                        console.error("Session processing error:", e);
                         
-                        let errorMsg = await sock.sendMessage(sock.user.id, { 
+                        await sock.sendMessage(sock.user.id, { 
                             text: `*⚠️ Session Generation Error*\n\n${e.message || e.toString()}\n\nPlease try again.`
                         });
-                        
-                        let desc = `┏━❑ *SILA-MD SESSION* ⚠️
-┏━❑ *SAFETY RULES* ━━━━━━━━━
-┃ 🔹 *Error:* Session creation failed.
-┃ 🔹 Please try again later.
-┃ 🔹 Contact support if issue persists.
-┗━━━━━━━━━━━━━━━
-┏━❑ *CHANNEL* ━━━━━━━━━
-┃ 📢 Follow our channel: https://whatsapp.com/channel/0029VbBG4gfISTkCpKxyMH02
-┗━━━━━━━━━━━━━━━
-┏━❑ *REPOSITORY* ━━━━━━━━━
-┃ 💻 Repository: https://github.com/Sila-Md/SILA-MD
-┗━━━━━━━━━━━━━━━
-
-> © 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚 𝐓𝐞𝐜𝐡`;
-
-                        await sock.sendMessage(sock.user.id, {
-                            text: desc,
-                            contextInfo: {
-                                externalAdReply: {
-                                    title: 'SILA MD',
-                                    body: '© Sila Tech',
-                                    thumbnailUrl: 'https://files.catbox.moe/98k75b.jpeg',
-                                    thumbnailWidth: 64,
-                                    thumbnailHeight: 64,
-                                    sourceUrl: 'https://whatsapp.com/channel/0029VbBG4gfISTkCpKxyMH02',
-                                    mediaUrl: 'https://files.catbox.moe/98k75b.jpeg',
-                                    showAdAttribution: true,
-                                    renderLargerThumbnail: false,
-                                    previewType: 'PHOTO',
-                                    mediaType: 1
-                                },
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterJid: '120363402325089913@newsletter',
-                                    newsletterName: '© Sila Tech',
-                                    serverMessageId: Math.floor(Math.random() * 1000000)
-                                },
-                                isForwarded: true,
-                                forwardingScore: 999
-                            }
-                        }, { quoted: errorMsg });
                     }
 
                     await delay(10);
@@ -216,8 +223,9 @@ router.get('/', async (req, res) => {
         } catch (err) {
             console.log("⚠️ SILA-MD Connection failed — Restarting service...");
             await removeFile('./temp/' + id);
-            if (!res.headersSent) {
+            if (!responseSent && !res.headersSent) {
                 await res.send({ code: "❗ SILA-MD Service Unavailable" });
+                responseSent = true;
             }
         }
     }
