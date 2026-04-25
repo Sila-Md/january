@@ -27,38 +27,15 @@ function removeFile(FilePath) {
     fs.rmSync(FilePath, { recursive: true, force: true });
 }
 
-// Generate long session string from creds.json
-function generateLongSession(credsPath) {
-    try {
-        const credsData = fs.readFileSync(credsPath, 'utf8');
-        const compressedData = zlib.gzipSync(credsData);
-        const b64data = compressedData.toString('base64');
-        return SESSION_PREFIX + b64data;
-    } catch (error) {
-        console.error("Error generating long session:", error);
-        return null;
-    }
-}
-
-// Generate creds.json session (raw JSON as string)
-function generateCredsSession(credsPath) {
-    try {
-        const credsData = fs.readFileSync(credsPath, 'utf8');
-        return credsData;
-    } catch (error) {
-        console.error("Error reading creds:", error);
-        return null;
-    }
-}
-
 router.get('/', async (req, res) => {
     const id = makeid();
     const startTime = Date.now();
     const sessionType = (req.query.session || 'long').toLowerCase();
     let responseSent = false;
 
-    async function SILA_MD_PAIR_CODE() {
-        const { state, saveCreds } = await useMultiFileAuthState('./temp/' + id);
+    async function SILA_MD_QR_CODE() {
+        const sessionDir = './temp/' + id;
+        const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
         try {
             const items = ["Safari", "Chrome", "Firefox"];
@@ -82,31 +59,43 @@ router.get('/', async (req, res) => {
                 const performanceLevel = latency < 200 ? "🟢 Excellent" : latency < 500 ? "🟡 Good" : "🔴 Slow";
 
                 try {
-                    // Send QR code if available
                     if (qr && !responseSent && !res.headersSent) {
                         responseSent = true;
                         return await res.end(await QRCode.toBuffer(qr));
                     }
 
                     if (connection == "open") {
-                        await delay(3000);
-                        let credsPath = path.join(__dirname, 'temp', id, 'creds.json');
+                        await delay(5000);
+                        
+                        // Force save creds
+                        await saveCreds();
+                        await delay(2000);
 
-                        // Wait for creds.json to be fully written
+                        let credsPath = path.join(sessionDir, 'creds.json');
+                        
+                        // Wait for valid creds.json
                         let sessionData = null;
                         let attempts = 0;
-                        const maxAttempts = 15;
+                        const maxAttempts = 20;
 
                         while (attempts < maxAttempts && !sessionData) {
                             try {
                                 if (fs.existsSync(credsPath)) {
-                                    const data = fs.readFileSync(credsPath);
-                                    if (data && data.length > 100) {
-                                        sessionData = data;
-                                        break;
+                                    const stats = fs.statSync(credsPath);
+                                    const data = fs.readFileSync(credsPath, 'utf8');
+                                    if (data && data.length > 200 && stats.size > 200) {
+                                        try {
+                                            const parsed = JSON.parse(data);
+                                            if (parsed.noiseKey && parsed.signedIdentityKey && parsed.signedPreKey) {
+                                                sessionData = data;
+                                                break;
+                                            }
+                                        } catch (parseError) {
+                                            // JSON not complete
+                                        }
                                     }
                                 }
-                                await delay(8000);
+                                await delay(5000);
                                 attempts++;
                             } catch (readError) {
                                 console.error("Read error:", readError);
@@ -120,7 +109,7 @@ router.get('/', async (req, res) => {
                                 res.status(500).json({ code: "Session data not found" });
                                 responseSent = true;
                             }
-                            await removeFile('./temp/' + id);
+                            await removeFile(sessionDir);
                             return;
                         }
 
@@ -129,28 +118,29 @@ router.get('/', async (req, res) => {
                             let sessionLabel;
 
                             if (sessionType === 'long') {
-                                let compressedData = zlib.gzipSync(sessionData);
-                                let b64data = compressedData.toString('base64');
+                                const compressedData = zlib.gzipSync(sessionData);
+                                const b64data = compressedData.toString('base64');
                                 sessionCode = SESSION_PREFIX + b64data;
                                 sessionLabel = 'LONG SESSION';
                             } else {
-                                sessionCode = sessionData.toString('utf8');
+                                sessionCode = sessionData;
                                 sessionLabel = 'CREDS.JSON SESSION';
                             }
 
-                            // Send session code first
-                            let codeMsg = await sock.sendMessage(sock.user.id, { 
+                            // Send session code
+                            await sock.sendMessage(sock.user.id, { 
                                 text: `*✅ YOUR ${sessionLabel}*\n\n${sessionCode}`
                             });
 
-                            // Prepare buttons
+                            await delay(2000);
+
+                            // Buttons
                             const msgButtons = [
                                 { name: 'cta_copy', buttonParamsJson: JSON.stringify({ display_text: '📋 Copy Session', copy_code: sessionCode }) },
                                 { name: 'cta_url', buttonParamsJson: JSON.stringify({ display_text: '📂 Bot Repository', url: BOT_REPO }) },
                                 { name: 'cta_url', buttonParamsJson: JSON.stringify({ display_text: '📢 Join Channel', url: WA_CHANNEL }) }
                             ];
 
-                            // Send buttons
                             await sendButtons(sock, sock.user.id, {
                                 title: 'SILA MD',
                                 text: `*${sessionLabel}*\n\nTap button below to copy your session.`,
@@ -158,7 +148,7 @@ router.get('/', async (req, res) => {
                                 buttons: msgButtons
                             });
 
-                            // Send formatted message
+                            // Info message
                             let desc = `┏━❑ *SILA-MD ${sessionLabel}* ✅
 ┏━❑ *SAFETY RULES* ━━━━━━━━━
 ┃ 🔹 *Session ID:* Sent above.
@@ -204,95 +194,43 @@ router.get('/', async (req, res) => {
                                     isForwarded: true,
                                     forwardingScore: 999
                                 }
-                            }, { quoted: codeMsg });
+                            });
 
                         } catch (e) {
                             console.error("Session processing error:", e);
-                            
-                            let errorMsg = await sock.sendMessage(sock.user.id, { 
-                                text: `*⚠️ Session Generation Error*\n\n${e.message || e.toString()}\n\nPlease try again.`
+                            await sock.sendMessage(sock.user.id, { 
+                                text: `*⚠️ Error*\n\n${e.message || e.toString()}`
                             });
-
-                            let desc = `┏━❑ *SILA-MD SESSION* ⚠️
-┏━❑ *SAFETY RULES* ━━━━━━━━━
-┃ 🔹 *Error:* Session creation failed.
-┃ 🔹 Please try again later.
-┃ 🔹 Contact support if issue persists.
-┗━━━━━━━━━━━━━━━
-┏━❑ *CHANNEL* ━━━━━━━━━
-┃ 📢 Follow our channel: ${WA_CHANNEL}
-┗━━━━━━━━━━━━━━━
-┏━❑ *REPOSITORY* ━━━━━━━━━
-┃ 💻 Repository: ${BOT_REPO}
-┗━━━━━━━━━━━━━━━
-
-╔► 𝐏𝐞𝐫𝐟𝐨𝐫𝐦𝐚𝐧𝐜𝐞 𝐋𝐞𝐯𝐞𝐥:
-╠► ${performanceLevel}
-╚► → 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 𝐭𝐢𝐦𝐞: ${latency}ms
-
-> © 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐒𝐢𝐥𝐚 𝐓𝐞𝐜𝐡`;
-
-                            await sock.sendMessage(sock.user.id, {
-                                text: desc,
-                                contextInfo: {
-                                    externalAdReply: {
-                                        title: 'SILA MD',
-                                        body: '© Sila Tech',
-                                        thumbnailUrl: THUMBNAIL_URL,
-                                        thumbnailWidth: 64,
-                                        thumbnailHeight: 64,
-                                        sourceUrl: WA_CHANNEL,
-                                        mediaUrl: THUMBNAIL_URL,
-                                        showAdAttribution: true,
-                                        renderLargerThumbnail: false,
-                                        previewType: 'PHOTO',
-                                        mediaType: 1
-                                    },
-                                    forwardedNewsletterMessageInfo: {
-                                        newsletterJid: '120363402325089913@newsletter',
-                                        newsletterName: '© Sila Tech',
-                                        serverMessageId: Math.floor(Math.random() * 1000000)
-                                    },
-                                    isForwarded: true,
-                                    forwardingScore: 999
-                                }
-                            }, { quoted: errorMsg });
                         }
 
-                        await delay(10);
+                        await delay(2000);
                         await sock.ws.close();
-                        await removeFile('./temp/' + id);
-                        console.log(`👤 ${sock.user.id} 🔥 SILA-MD Session Connected (${sessionType.toUpperCase()}) ✅`);
-                        await delay(10);
+                        await removeFile(sessionDir);
+                        console.log(`👤 QR Session Connected (${sessionType.toUpperCase()}) ✅`);
                         process.exit();
                     }
 
                 } catch (err) {
-                    console.log("⚠️ Error in connection.update:", err);
+                    console.log("⚠️ Error:", err);
                 }
 
-                if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode != 401) {
-                    await delay(10);
-                    SILA_MD_PAIR_CODE();
+                if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output?.statusCode != 401) {
+                    await delay(5000);
+                    SILA_MD_QR_CODE();
                 }
             });
 
         } catch (err) {
-            console.log("⚠️ SILA-MD Connection failed — Restarting service...", err);
-            await removeFile('./temp/' + id);
+            console.log("⚠️ Connection failed:", err);
+            await removeFile(sessionDir);
             if (!responseSent && !res.headersSent) {
-                await res.send({ code: "❗ SILA-MD Service Unavailable" });
+                await res.send({ code: "❗ Service Unavailable" });
                 responseSent = true;
             }
         }
     }
 
-    await SILA_MD_PAIR_CODE();
+    await SILA_MD_QR_CODE();
 });
-
-setInterval(() => {
-    console.log("🔄 SILA-MD Restarting process...");
-    process.exit();
-}, 1800000); // 30 minutes
 
 module.exports = router;
